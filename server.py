@@ -83,20 +83,49 @@ def server_program():
                 return
     
     
-    # now that the user is logged in, ask them what they want to do
-    message = 'What would you like to do?'
-    conn.send(message.encode())
-    
     while True:
+    
+        # now that the user is logged in, ask them what they want to do
+        message = '\nWhat would you like to do?'
+        conn.send(message.encode())
+    
         if not logged_in:
             return
         data = conn.recv(1024).decode()
         if not data:
             # if data is not received break
             return
-        # if data == 'Upload':
+        if data == 'Upload':
+            message = 'Downloading file...'
+            conn.send(message.encode())
             
-    
+            
+            filename = conn.recv(1024).decode()
+            if not filename:
+                # if data is not received break
+                return
+            # receive the file into the user's directory
+            filelocation = 'users/' + username + '/' + filename
+            
+            filesize = conn.recv(1024).decode()
+            
+            with open(filelocation, 'wb') as f:
+                while True:
+                    data = conn.recv(1024)
+                    if not data:
+                        break
+                    f.write(data)
+                
+            
+            message = 'File received'
+            conn.send(message.encode())
+            
+            # add the file to the user's list of files
+            users.add_file(username, filename)
+            
+            break
+            
+
 
     conn.close()  # close the connection
 

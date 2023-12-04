@@ -1,4 +1,5 @@
 import socket
+import os
 
 
 def client_program():
@@ -14,6 +15,24 @@ def client_program():
         data = client_socket.recv(1024).decode()  # receive response
 
         print(data)  # show in terminal
+        
+        if data == "Downloading file...":
+            filename = input("Enter filename: ")
+            if not os.path.exists(filename):
+                print("File does not exist")
+                continue
+            
+            with open(filename, 'rb') as f:
+                filesize = os.stat(filename).st_size
+                client_socket.send(filename.encode())
+                client_socket.send(str(filesize).encode())
+                
+                while True:
+                    data = f.read(1024)
+                    if not data:
+                        break
+                    client_socket.send(data)
+            print("File sent")
         
         message = input(" -> ")  # again take input
         client_socket.send(message.encode())
