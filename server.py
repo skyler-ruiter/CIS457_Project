@@ -1,51 +1,105 @@
 import socket
-import threading
+import users
 
-def handle_client(client_socket, client_address, other_client_socket):
-    try:
-        while True:
-            data = client_socket.recv(1024)
-            if not data:
-                break
 
-            # Send the received message to the other client
-            other_client_socket.send(data)
-    except Exception as e:
-        print(f"Error handling client {client_address}: {e}")
-    finally:
-        client_socket.close()
-
-def start_server():
-    host = '127.0.0.1'
-    port = 12345
-
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def server_program():
+    logged_in = False
+    host = socket.gethostname()
+    port = 5000
+    users.upload_users()
+    
+    server_socket = socket.socket()
     server_socket.bind((host, port))
+
+    # how many clients the server can listen simultaneously
     server_socket.listen(2)
-    print(f"Server listening on {host}:{port}")
+    conn, address = server_socket.accept()  # accept new connection
+    print("Welcome to the Data Archiver and Transport Application (DATA)")
+    print("Connection from: " + str(address))
+    
+    # ask the client whether he wants to login or register
+    message = 'Login or Register?'
+    conn.send(message.encode())
+    
+    while not logged_in:
+        
+        data = conn.recv(1024).decode()
+        if not data:
+            # if data is not received break
+            return
+    
+        if data == 'Register':
+            message = 'Enter new username: '
+            conn.send(message.encode())
+            data = conn.recv(1024).decode()
+            if not data:
+                # if data is not received break
+                return
+            username = data
+            message = 'Enter new password: '
+            conn.send(message.encode())
+            data = conn.recv(1024).decode()
+            if not data:
+                # if data is not received break
+                return
+            password = data
+            users.register_user(username, password)
+            message = 'Registration successful'
+            conn.send(message.encode())
+            
+            users.download_users()
+            
+            if users.login_user(username, password):
+                message = 'Login successful'
+                conn.send(message.encode())
+                logged_in = True
+            else:
+                message = 'Login failed'
+                conn.send(message.encode())
+                return
+            
+        else:
+            message = 'Enter username: '
+            conn.send(message.encode())
+            data = conn.recv(1024).decode()
+            if not data:
+                # if data is not received break
+                return
+            username = data
+            message = 'Enter password: '
+            conn.send(message.encode())
+            data = conn.recv(1024).decode()
+            if not data:
+                # if data is not received break
+                return
+            password = data
+            if users.login_user(username, password):
+                message = 'Login successful'
+                conn.send(message.encode())
+                logged_in = True
+            else:
+                message = 'Login failed'
+                conn.send(message.encode())
+                return
+    
+    
+    # now that the user is logged in, ask them what they want to do
+    message = 'What would you like to do?'
+    conn.send(message.encode())
+    
+    while True:
+        if not logged_in:
+            return
+        data = conn.recv(1024).decode()
+        if not data:
+            # if data is not received break
+            return
+        # if data == 'Upload':
+            
+    
 
-    clients = []
+    conn.close()  # close the connection
 
-    try:
-        while len(clients) < 2:
-            client_socket, client_address = server_socket.accept()
-            print(f"Accepted connection from {client_address}")
 
-            # Add the client to the list of connected clients
-            clients.append((client_socket, client_address))
-
-            # If two clients are connected, start a new thread for each client
-            if len(clients) == 2:
-                thread1 = threading.Thread(target=handle_client, args=(clients[0][0], clients[0][1], clients[1][0]))
-                thread2 = threading.Thread(target=handle_client, args=(clients[1][0], clients[1][1], clients[0][0]))
-
-                thread1.start()
-                thread2.start()
-
-    except KeyboardInterrupt:
-        print("Server shutting down.")
-    finally:
-        server_socket.close()
-
-if __name__ == "__main__":
-    start_server()
+if __name__ == '__main__':
+    server_program()
