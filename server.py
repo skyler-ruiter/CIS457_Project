@@ -108,14 +108,14 @@ def server_program():
             filelocation = 'users/' + username + '/' + filename
             
             filesize = conn.recv(1024).decode()
-            
+
             with open(filelocation, 'wb') as f:
                 while True:
                     data = conn.recv(1024)
+                    print("hi")
                     if not data:
                         break
                     f.write(data)
-                
             
             message = 'File received'
             conn.send(message.encode())

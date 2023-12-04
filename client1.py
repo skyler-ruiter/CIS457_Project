@@ -29,10 +29,12 @@ def client_program():
                 
                 while True:
                     data = f.read(1024)
+                    print(data)
                     if not data:
                         break
                     client_socket.send(data)
             print("File sent")
+            continue
         
         message = input(" -> ")  # again take input
         client_socket.send(message.encode())
