@@ -108,14 +108,22 @@ def server_program():
             filelocation = 'users/' + username + '/' + filename
             
             filesize = conn.recv(1024).decode()
+            
+            message = 'Metadata received'
+            conn.send(message.encode())
 
+            # receive the data into a variable first
+            data = b''
+            while True:
+                packet = conn.recv(1024)
+                message = 'File piece received'
+                conn.send(message.encode())
+                data += packet
+                if len(data) >= int(filesize):
+                    break
+            # write the data to the file
             with open(filelocation, 'wb') as f:
-                while True:
-                    data = conn.recv(1024)
-                    print("hi")
-                    if not data:
-                        break
-                    f.write(data)
+                f.write(data)
             
             message = 'File received'
             conn.send(message.encode())

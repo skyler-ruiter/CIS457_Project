@@ -26,10 +26,10 @@ def client_program():
                 filesize = os.stat(filename).st_size
                 client_socket.send(filename.encode())
                 client_socket.send(str(filesize).encode())
+                data = client_socket.recv(1024).decode()
                 
                 while True:
                     data = f.read(1024)
-                    print(data)
                     if not data:
                         break
                     client_socket.send(data)
