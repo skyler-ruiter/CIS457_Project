@@ -1,6 +1,6 @@
 import socket
 import users
-
+import os
 
 def server_program():
     logged_in = False
@@ -14,11 +14,7 @@ def server_program():
     # how many clients the server can listen simultaneously
     server_socket.listen(2)
     conn, address = server_socket.accept()  # accept new connection
-    print("Welcome to the Data Archiver and Transport Application (DATA)")
-    print("Connection from: " + str(address))
-    
-    # ask the client whether he wants to login or register
-    message = 'Login or Register?'
+    message = "Welcome to the Data Archiver and Transport Application (DATA) \nWould you like to Login or Register?"
     conn.send(message.encode())
     
     while not logged_in:
@@ -26,7 +22,7 @@ def server_program():
         data = conn.recv(1024).decode()
         if not data:
             # if data is not received break
-            return
+            continue
     
         if data == 'Register':
             message = 'Enter new username: '
@@ -34,14 +30,14 @@ def server_program():
             data = conn.recv(1024).decode()
             if not data:
                 # if data is not received break
-                return
+                continue
             username = data
             message = 'Enter new password: '
             conn.send(message.encode())
             data = conn.recv(1024).decode()
             if not data:
                 # if data is not received break
-                return
+                continue
             password = data
             users.register_user(username, password)
             message = 'Registration successful'
@@ -56,7 +52,7 @@ def server_program():
             else:
                 message = 'Login failed'
                 conn.send(message.encode())
-                return
+                continue
             
         else:
             message = 'Enter username: '
@@ -64,14 +60,14 @@ def server_program():
             data = conn.recv(1024).decode()
             if not data:
                 # if data is not received break
-                return
+                continue
             username = data
             message = 'Enter password: '
             conn.send(message.encode())
             data = conn.recv(1024).decode()
             if not data:
                 # if data is not received break
-                return
+                continue
             password = data
             if users.login_user(username, password):
                 message = 'Login successful'
@@ -80,25 +76,28 @@ def server_program():
             else:
                 message = 'Login failed'
                 conn.send(message.encode())
-                return
+                continue
     
     
     while True:
     
         # now that the user is logged in, ask them what they want to do
-        message = '\nWhat would you like to do?'
+        message = '\nWhat would you like to do? (Upload, Download, List, Quit)'
         conn.send(message.encode())
     
         if not logged_in:
-            return
+            break
+        
         data = conn.recv(1024).decode()
         if not data:
             # if data is not received break
-            return
+            data = ''
+            continue
+        
+        
         if data == 'Upload':
-            message = 'Downloading file...'
+            message = 'Upload'
             conn.send(message.encode())
-            
             
             filename = conn.recv(1024).decode()
             if not filename:
@@ -116,8 +115,8 @@ def server_program():
             data = b''
             while True:
                 packet = conn.recv(1024)
-                message = 'File piece received'
-                conn.send(message.encode())
+                # message = 'File piece received'
+                # conn.send(message.encode())
                 data += packet
                 if len(data) >= int(filesize):
                     break
@@ -130,10 +129,56 @@ def server_program():
             
             # add the file to the user's list of files
             users.add_file(username, filename)
+            users.download_user_files()
+            data = 'Upload'
+        elif data == 'Download':
+            message = 'Download'
+            conn.send(message.encode())
             
+            filename = conn.recv(1024).decode()
+            if not filename:
+                # if data is not received break
+                return
+            # send the file from the user's directory
+            filelocation = 'users/' + username + '/' + filename
+            
+            filesize = str(os.stat(filelocation).st_size)
+            conn.send(filesize.encode())
+            filesize = int(filesize)
+            
+            # send the data in chunks
+            with open(filelocation, 'rb') as f:
+                while filesize > 0:
+                    data = b''
+                    if filesize < 1024:
+                        data = f.read(filesize)
+                    else:
+                        data = f.read(1024)
+                    conn.send(data)
+                    filesize -= len(data)
+            
+            message = 'File sent'
+            conn.send(message.encode())
+            data = 'Download'
+        elif data == 'Quit':
+            message = 'Goodbye'
+            conn.send(message.encode())
             break
+        elif data == 'List':
+            users.upload_users()
+            message = 'List\n'
+            conn.send(message.encode())
             
-
+            # send the list of files
+            files = users.user_files[username]
+            message = ''
+            for file in files:
+                message += file + '\n'
+            conn.send(message.encode())
+        else: 
+            # send that they selected an invalid option
+            message = 'Invalid option'
+            conn.send(message.encode())
 
     conn.close()  # close the connection
 
